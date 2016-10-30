@@ -33,7 +33,7 @@ public class CassandraClientImpl implements CassandraClient {
 	
 	private static final JsonArray EMPTY = new JsonArray(Collections.unmodifiableList(new ArrayList<>()));
 	
-	public static final String DS_LOCAL_MAP_NAME = "__isoft.vertx.CassandraClient.datasources";
+	public static final String DS_LOCAL_MAP_NAME = "__ioswarm.vertx.CassandraClient.datasources";
 	
 	private final Vertx vertx;
 	protected final CassandraHolder holder;
