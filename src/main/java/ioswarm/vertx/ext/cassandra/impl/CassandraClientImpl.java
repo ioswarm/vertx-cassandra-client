@@ -18,6 +18,8 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.datastax.driver.core.Statement;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -62,6 +64,21 @@ public class CassandraClientImpl implements CassandraClient {
 	}
 	
 	@Override
+	public CassandraClient execute(Statement stmt, Handler<AsyncResult<ResultSet>> resultSetHandler) {
+		final ResultSetFuture refd = holder.session().executeAsync(stmt);
+		
+		vertx.executeBlocking(handler -> {
+			try {
+				handler.complete(refd.getUninterruptibly());
+			} catch(Exception e) {
+				handler.fail(e);
+			}
+		}, resultSetHandler);
+		
+		return this;
+	}
+	
+	@Override
 	public CassandraClient execute(String cql, Handler<AsyncResult<Void>> resultHandler) {
 		final ResultSetFuture resf = holder.session().executeAsync(cql);
 		
@@ -71,6 +88,23 @@ public class CassandraClientImpl implements CassandraClient {
 				handler.complete();
 			} catch(Exception e) {
 				resf.cancel(true);
+				handler.fail(e);
+			}
+		}, resultHandler);
+		
+		return this;
+	}
+	
+	public CassandraClient execute(String cql, JsonArray params, Handler<AsyncResult<Void>> resultHandler) {
+		ListenableFuture<PreparedStatement> fpstmt = holder.session().prepareAsync(cql);
+		
+		vertx.executeBlocking(handler -> {
+			try {
+				PreparedStatement pstmt = fpstmt.get();
+				BoundStatement bstmt = pstmt.bind();
+				
+			} catch(Exception e) {
+				fpstmt.cancel(true);
 				handler.fail(e);
 			}
 		}, resultHandler);
@@ -113,6 +147,8 @@ public class CassandraClientImpl implements CassandraClient {
 						if (!row.isNull(colName) && colType.equals(DataType.timestamp())) {
 							SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
 							jo.put(colName, sdf.format(row.getTimestamp(colName)));
+						} else if (colType.equals(DataType.blob())) {
+							jo.put(colName, row.getBytes(colName).array());
 						} else jo.put(colName, row.getObject(colName));
 					}
 					l.add(jo);
