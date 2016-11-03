@@ -18,7 +18,6 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.datastax.driver.core.Statement;
 
 import io.vertx.core.AsyncResult;
@@ -95,16 +94,27 @@ public class CassandraClientImpl implements CassandraClient {
 		return this;
 	}
 	
+	private Object[] boundaries(JsonArray params) {
+		Object[] ret = new Object[params.size()];
+		for (int i=0;i<params.size();i++)
+			ret[i] = params.getValue(i);
+		return ret;
+	}
+	
+	@Override
 	public CassandraClient execute(String cql, JsonArray params, Handler<AsyncResult<Void>> resultHandler) {
-		ListenableFuture<PreparedStatement> fpstmt = holder.session().prepareAsync(cql);
+		if (params == null) 
+			params = EMPTY;
 		
+		PreparedStatement pstmt = holder.session().prepare(cql);
+		BoundStatement bstmt = new BoundStatement(pstmt);
+		final ResultSetFuture resf = holder.session().executeAsync(bstmt.bind(boundaries(params)));		
 		vertx.executeBlocking(handler -> {
 			try {
-				PreparedStatement pstmt = fpstmt.get();
-				BoundStatement bstmt = pstmt.bind();
-				
+				resf.getUninterruptibly();
+				handler.complete();
 			} catch(Exception e) {
-				fpstmt.cancel(true);
+				resf.cancel(true);
 				handler.fail(e);
 			}
 		}, resultHandler);
@@ -115,13 +125,6 @@ public class CassandraClientImpl implements CassandraClient {
 	@Override
 	public CassandraClient query(String cql, Handler<AsyncResult<List<JsonObject>>> resultHandler) {
 		return query(cql, null, resultHandler);
-	}
-	
-	private Object[] boundaries(JsonArray params) {
-		Object[] ret = new Object[params.size()];
-		for (int i=0;i<params.size();i++)
-			ret[i] = params.getValue(i);
-		return ret;
 	}
 	
 	@Override

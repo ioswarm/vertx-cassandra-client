@@ -13,8 +13,8 @@ import io.vertx.core.json.JsonObject;
 
 public class CassandraUtil {
 	
-	private static final String CREATE_KEYSPACE_COMMAND = "CREATE KEYSPACE %1$s WITH REPLICATION = {%2$s}";
-	private static final String CHECK_KEYSPACE_COMMAND = "SELECT * FROM SYSTEM.SCHEMA_KEYSPACES WHERE KEYSPACE_NAME = %1$s LIMIT 1";
+	private static final String CREATE_KEYSPACE_COMMAND = "CREATE KEYSPACE IF NOT EXISTS %1$s WITH REPLICATION = {%2$s}";
+	private static final String CHECK_KEYSPACE_COMMAND = "SELECT * FROM SYSTEM_SCHEMA.KEYSPACES WHERE KEYSPACE_NAME = %1$s LIMIT 1";
 	
 	private static final String REPLICATION_SIMPLE = "SimpleStrategy";
 	private static final String REPLICATION_NETWORK_TOPOLOGY = "NetworkTopologyStrategy";
@@ -22,8 +22,8 @@ public class CassandraUtil {
 	public static Cluster buildCluster(JsonObject config) {
 		Cluster.Builder builder = Cluster.builder();
 		builder.withRetryPolicy(DefaultRetryPolicy.INSTANCE);
-//		builder.withLoadBalancingPolicy(new TokenAwarePolicy(DCAwareRoundRobinPolicy.builder().build()));
-		builder.withLoadBalancingPolicy(new TokenAwarePolicy(new DCAwareRoundRobinPolicy()));
+		builder.withLoadBalancingPolicy(new TokenAwarePolicy(DCAwareRoundRobinPolicy.builder().build()));
+//		builder.withLoadBalancingPolicy(new TokenAwarePolicy(new DCAwareRoundRobinPolicy()));
 		
 		if (config.containsKey("hosts")) {
 			JsonArray hosts = config.getJsonArray("hosts");
