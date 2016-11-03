@@ -7,6 +7,7 @@ import ioswarm.vertx.ext.cassandra.impl.CassandraClientImpl;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
 
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.AsyncResult;
@@ -37,7 +38,10 @@ public interface CassandraClient {
 	public Cluster cluster();
 	public Session session();
 	
+	public CassandraClient execute(Statement stmt, Handler<AsyncResult<com.datastax.driver.core.ResultSet>> resultSetHandler);
+	
 	public CassandraClient execute(String cql, Handler<AsyncResult<Void>> resultHandler);
+	public CassandraClient execute(String cql, JsonArray params, Handler<AsyncResult<Void>> resultHandler);	
 	
 	public CassandraClient query(String cql, Handler<AsyncResult<List<JsonObject>>> resultHandler);
 	public CassandraClient query(String cql, JsonArray params, Handler<AsyncResult<List<JsonObject>>> resultHandler);

@@ -18,6 +18,7 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -62,6 +63,21 @@ public class CassandraClientImpl implements CassandraClient {
 	}
 	
 	@Override
+	public CassandraClient execute(Statement stmt, Handler<AsyncResult<ResultSet>> resultSetHandler) {
+		final ResultSetFuture refd = holder.session().executeAsync(stmt);
+		
+		vertx.executeBlocking(handler -> {
+			try {
+				handler.complete(refd.getUninterruptibly());
+			} catch(Exception e) {
+				handler.fail(e);
+			}
+		}, resultSetHandler);
+		
+		return this;
+	}
+	
+	@Override
 	public CassandraClient execute(String cql, Handler<AsyncResult<Void>> resultHandler) {
 		final ResultSetFuture resf = holder.session().executeAsync(cql);
 		
@@ -78,16 +94,37 @@ public class CassandraClientImpl implements CassandraClient {
 		return this;
 	}
 	
-	@Override
-	public CassandraClient query(String cql, Handler<AsyncResult<List<JsonObject>>> resultHandler) {
-		return query(cql, null, resultHandler);
-	}
-	
 	private Object[] boundaries(JsonArray params) {
 		Object[] ret = new Object[params.size()];
 		for (int i=0;i<params.size();i++)
 			ret[i] = params.getValue(i);
 		return ret;
+	}
+	
+	@Override
+	public CassandraClient execute(String cql, JsonArray params, Handler<AsyncResult<Void>> resultHandler) {
+		if (params == null) 
+			params = EMPTY;
+		
+		PreparedStatement pstmt = holder.session().prepare(cql);
+		BoundStatement bstmt = new BoundStatement(pstmt);
+		final ResultSetFuture resf = holder.session().executeAsync(bstmt.bind(boundaries(params)));		
+		vertx.executeBlocking(handler -> {
+			try {
+				resf.getUninterruptibly();
+				handler.complete();
+			} catch(Exception e) {
+				resf.cancel(true);
+				handler.fail(e);
+			}
+		}, resultHandler);
+		
+		return this;
+	}
+	
+	@Override
+	public CassandraClient query(String cql, Handler<AsyncResult<List<JsonObject>>> resultHandler) {
+		return query(cql, null, resultHandler);
 	}
 	
 	@Override
@@ -113,6 +150,8 @@ public class CassandraClientImpl implements CassandraClient {
 						if (!row.isNull(colName) && colType.equals(DataType.timestamp())) {
 							SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
 							jo.put(colName, sdf.format(row.getTimestamp(colName)));
+						} else if (colType.equals(DataType.blob())) {
+							jo.put(colName, row.getBytes(colName).array());
 						} else jo.put(colName, row.getObject(colName));
 					}
 					l.add(jo);
