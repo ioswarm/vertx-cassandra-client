@@ -148,7 +148,7 @@ public class CassandraClientImpl implements CassandraClient {
 						DataType colType = colDefs.getType(i);
 						
 						if (!row.isNull(colName) && colType.equals(DataType.timestamp())) {
-							SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssZ");
+							SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 							jo.put(colName, sdf.format(row.getTimestamp(colName)));
 						} else if (colType.equals(DataType.blob())) {
 							jo.put(colName, row.getBytes(colName).array());
