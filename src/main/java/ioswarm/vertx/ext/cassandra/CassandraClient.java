@@ -43,6 +43,9 @@ public interface CassandraClient {
 	public CassandraClient execute(String cql, Handler<AsyncResult<Void>> resultHandler);
 	public CassandraClient execute(String cql, JsonArray params, Handler<AsyncResult<Void>> resultHandler);	
 	
+	public List<JsonObject> query(String cql);
+	public List<JsonObject> query(String cql, JsonArray params);
+	
 	public CassandraClient query(String cql, Handler<AsyncResult<List<JsonObject>>> resultHandler);
 	public CassandraClient query(String cql, JsonArray params, Handler<AsyncResult<List<JsonObject>>> resultHandler);
 	

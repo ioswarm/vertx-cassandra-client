@@ -123,6 +123,38 @@ public class CassandraClientImpl implements CassandraClient {
 	}
 	
 	@Override
+	public List<JsonObject> query(String cql) {
+		return query(cql, new JsonArray());
+	}
+	
+	@Override
+	public List<JsonObject> query(String cql, JsonArray params) {
+		PreparedStatement pstmt = holder.session().prepare(cql);
+		BoundStatement bstmt = new BoundStatement(pstmt);
+		ResultSet res = holder.session().execute(bstmt.bind(boundaries(params)));
+		List<JsonObject> l = new ArrayList<JsonObject>();
+		
+		ColumnDefinitions colDefs = res.getColumnDefinitions();
+		for (Row row : res) {
+			JsonObject jo = new JsonObject();
+			for (int i=0;i<colDefs.size();i++) {
+				String colName = colDefs.getName(i);
+				DataType colType = colDefs.getType(i);
+				
+				if (!row.isNull(colName) && colType.equals(DataType.timestamp())) {
+					SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+					jo.put(colName, sdf.format(row.getTimestamp(colName)));
+				} else if (colType.equals(DataType.blob())) {
+					jo.put(colName, row.getBytes(colName).array());
+				} else jo.put(colName, row.getObject(colName));
+			}
+			l.add(jo);
+		}
+		
+		return l;
+	}
+	
+	@Override
 	public CassandraClient query(String cql, Handler<AsyncResult<List<JsonObject>>> resultHandler) {
 		return query(cql, null, resultHandler);
 	}
