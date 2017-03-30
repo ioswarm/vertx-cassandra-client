@@ -203,7 +203,7 @@ public class CassandraClientImpl implements CassandraClient {
 	
 	
 	private void removeFromMap(LocalMap<String, CassandraHolder> map, String dataSourceName) {
-		synchronized (vertx) {
+		synchronized (map) {
 			map.remove(dataSourceName);
 			if (map.isEmpty())
 				map.close();
@@ -212,7 +212,7 @@ public class CassandraClientImpl implements CassandraClient {
 	
 	private CassandraHolder lookupHolder(String dataSourceName, JsonObject config) {
 		synchronized (vertx) {
-			LocalMap<String, CassandraHolder> map = vertx.sharedData().getLocalMap(DS_LOCAL_MAP_NAME);
+			final LocalMap<String, CassandraHolder> map = vertx.sharedData().getLocalMap(DS_LOCAL_MAP_NAME);
 			CassandraHolder theHolder = map.get(dataSourceName);
 			if (theHolder == null) {
 				theHolder = new CassandraHolder(config, () -> removeFromMap(map, dataSourceName));
@@ -269,8 +269,9 @@ public class CassandraClientImpl implements CassandraClient {
 			if (--refCount == 0) {
 				if (cluster != null)
 					cluster.close();
-				if (closeRunner != null) 
-					closeRunner.run();
+//				TODO prevent blocking
+//				if (closeRunner != null) 
+//					closeRunner.run();
 			}
 		}
 		
