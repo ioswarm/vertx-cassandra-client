@@ -146,6 +146,8 @@ public class CassandraClientImpl implements CassandraClient {
 					jo.put(colName, sdf.format(row.getTimestamp(colName)));
 				} else if (colType.equals(DataType.blob())) {
 					jo.put(colName, row.getBytes(colName).array());
+				} else if (colType.equals(DataType.uuid())) {
+					jo.put(colName, row.getUUID(colName).toString());
 				} else jo.put(colName, row.getObject(colName));
 			}
 			l.add(jo);
